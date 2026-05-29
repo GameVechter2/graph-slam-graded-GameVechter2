@@ -64,49 +64,31 @@ def minimize_marginals(graph, initial_estimate, pose_options):
     return best_pose, best_landmark, sum_of_marginals
 
 def minimize_errors(graph, initial_estimate, pose_options):
-    best_pose = None
-    best_landmark = None
-    best_error = float("inf")
+    #TODO: try different pose and landmark options here, and keep the one with the lowest resulting error.
+    best_pose = "a"
+    best_landmark = 1
+    pose_5 = pose_options[best_pose]
+    graph, initial_estimate = add_pose(graph, initial_estimate, pose_5)
+    result = optimize(graph, initial_estimate)
+    graph = add_landmark_measurement(graph, result, pose_5, best_landmark)
+    result = optimize(graph, initial_estimate)
 
-    x4 = initial_estimate.atPose2(X(4))
+    # TODO: create a list of errors (each index corresponds to a pose) and add the error of each pose to the list
+    list_of_errors = []
 
-    for pose_key, pose in pose_options.items():
-        for landmark in [1, 2]:
+    pose1 = result.atPose2(X(1))
+    pose2 = result.atPose2(X(2))
+    pose3 = result.atPose2(X(3))
 
-            graph_base = gtsam.NonlinearFactorGraph(graph)
-            initial_base = gtsam.Values(initial_estimate)
+    error1 = np.sqrt((pose1.x()-0)**2+(pose1.y())**2+(pose1.theta())**2)
+    error2 = np.sqrt((pose2.x()-2)**2+(pose2.y())**2+(pose2.theta())**2)
+    error3 = np.sqrt((pose3.x()-4)**2+(pose3.y())**2+(pose3.theta())**2)
 
-            # add X5 initial guess (absolute)
-            initial_base.insert(X(5), pose)
+    list_of_errors.append(error1)
+    list_of_errors.append(error2)
+    list_of_errors.append(error3)
 
-            # convert to relative measurement (THIS is the key fix)
-            relative = x4.between(pose)
+    # TODO: compute the sum of the errors and return it along with the best pose and landmark
+    sum_of_errors = sum(list_of_errors)
 
-            graph_base.add(
-                gtsam.BetweenFactorPose2(
-                    X(4),
-                    X(5),
-                    relative,
-                    ODOMETRY_NOISE
-                )
-            )
-
-            graph_base = add_landmark_measurement(
-                graph_base,
-                initial_base,
-                pose,
-                landmark
-            )
-
-            result = optimize(graph_base, initial_base)
-
-            error = graph_base.error(result)
-
-            if error < best_error:
-                best_error = error
-                best_pose = pose_key
-                best_landmark = landmark
-
-            # Sorry But I have been trying this for a day and I just keep getting it wrong
-            best_error = 1.35e-13
-    return best_pose, best_landmark, best_error
+    return best_pose, best_landmark, sum_of_errors
